@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class Assert(models.Model):
@@ -16,19 +17,23 @@ class Assert(models.Model):
         # ('other', '其他')
     )
     assert_type = models.CharField(
-        verbose_name='资产类型', choices=assert_type_choices, default='server', max_length=6
+        verbose_name='资产类型', choices=assert_type_choices, default='server', max_length=16
     )
     sn = models.CharField(verbose_name='资产sn号', max_length=128, unique=True)
     management_ip = models.GenericIPAddressField(verbose_name='管理ip', null=True, blank=True)
-    contract_id = models.ForeignKey('Contract', verbose_name='合同', null=True, blank=True)
+    contract_id = models.ForeignKey('Contract', verbose_name='合同', null=True, blank=True, on_delete=models.CASCADE)
     trade_date = models.DateField(verbose_name='购买时间', null=True, blank=True)
     expire_date = models.DateField(verbose_name='过保时间', null=True, blank=True)
     price = models.FloatField(verbose_name='价格', null=True, blank=True)
-    admin = models.ForeignKey('UserProfile', verbose_name='资产管理员', null=True, blank=True)
-    idc = models.ForeignKey('IDC', verbose_name='机房', null=True, blank=True)
+    admin = models.ForeignKey('UserProfile', verbose_name='资产管理员', null=True, blank=True, on_delete=models.CASCADE)
+    idc = models.ForeignKey('IDC', verbose_name='机房', null=True, blank=True, on_delete=models.CASCADE)
     tags_id = models.ManyToManyField('Tag', verbose_name='标签', blank=True)
-    business_unit_id = models.ForeignKey('BusinessUnit', verbose_name='所属业务线', null=True, blank=True)
-    manufactory = models.ForeignKey('Manufactory', verbose_name='制造厂商名称', null=True, blank=True)
+    business_unit_id = models.ForeignKey(
+        'BusinessUnit', verbose_name='所属业务线', null=True, blank=True, on_delete=models.CASCADE
+    )
+    manufactory = models.ForeignKey(
+        'Manufactory', verbose_name='制造厂商名称', null=True, blank=True, on_delete=models.CASCADE
+    )
 
     meno = models.TextField(verbose_name='备注', null=True, blank=True)
     create_time = models.DateTimeField(verbose_name='创建时间', blank=True, auto_now_add=True)
@@ -44,7 +49,7 @@ class Assert(models.Model):
 
 class Server(models.Model):
     """服务器信息"""
-    assert_obj = models.OneToOneField(Assert)
+    assert_obj = models.OneToOneField(Assert, on_delete=models.CASCADE)
     sub_assert_type_choices = (
         (0, 'PC服务器'),
         (1, '小型机'),
@@ -56,7 +61,9 @@ class Server(models.Model):
         ('manual', 'Manual')
     )
     created_by = models.CharField(verbose_name='被创建的类型', max_length=32, choices=created_by_choices, default='auto')
-    hosted_on = models.ForeignKey('self', related_name='hosted_on_server', blank=True, null=True)
+    hosted_on = models.ForeignKey(
+        'self', related_name='hosted_on_server', blank=True, null=True, on_delete=models.CASCADE
+    )
     model = models.CharField(verbose_name='型号', max_length=32, null=True, blank=True)
     raid_type = models.CharField(verbose_name='raid类型', max_length=128, null=True, blank=True)
 
@@ -74,7 +81,7 @@ class Server(models.Model):
 
 class NetworkDevice(models.Model):
     """网络设备"""
-    assert_obj = models.OneToOneField(Assert)
+    assert_obj = models.OneToOneField(Assert, on_delete=models.CASCADE)
     sub_assert_type_choices = (
         (0, '路由器'),
         (1, '交换机'),
@@ -106,12 +113,12 @@ class Software(models.Model):
         (1, '办公\开发软件'),
         (2, '业务')
     )
-    software_type = models.CharField(verbose_name='软件类型', choices=software_type_choices, default=0)
+    software_type = models.CharField(verbose_name='软件类型', choices=software_type_choices, default=0, max_length=16)
 
 
 class Disk(models.Model):
     """硬盘表"""
-    asset = models.ForeignKey('Asset')
+    asset = models.ForeignKey('Assert', on_delete=models.CASCADE)
     sn = models.CharField(u'SN号', max_length=128, blank=True, null=True)
     slot = models.CharField(u'插槽位', max_length=64)
     # manufactory = models.CharField(u'制造商', max_length=64,blank=True,null=True)
@@ -142,7 +149,7 @@ class Disk(models.Model):
 
 class NIC(models.Model):
     """网卡组件"""
-    asset = models.ForeignKey('Asset')
+    asset = models.ForeignKey('Assert', on_delete=models.CASCADE)
     name = models.CharField(u'网卡名', max_length=64, blank=True, null=True)
     sn = models.CharField(u'SN号', max_length=128, blank=True, null=True)
     model = models.CharField(u'网卡型号', max_length=128, blank=True, null=True)
@@ -169,7 +176,7 @@ class NIC(models.Model):
 class RAM(models.Model):
     """内存组件"""
 
-    asset = models.ForeignKey('Assert')
+    asset = models.ForeignKey('Assert', on_delete=models.CASCADE)
     sn = models.CharField(u'SN号', max_length=128, blank=True, null=True)
     model = models.CharField(u'内存型号', max_length=128)
     slot = models.CharField(u'插槽', max_length=64)
@@ -192,7 +199,7 @@ class RAM(models.Model):
 class CPU(models.Model):
     """CPU组件"""
 
-    asset = models.OneToOneField('Assert')
+    asset = models.OneToOneField('Assert', on_delete=models.CASCADE)
     cpu_model = models.CharField(u'CPU型号', max_length=128, blank=True)
     cpu_count = models.SmallIntegerField(u'物理cpu个数')
     cpu_core_count = models.SmallIntegerField(u'cpu核数')
@@ -211,7 +218,7 @@ class CPU(models.Model):
 class RaidAdaptor(models.Model):
     """Raid卡"""
 
-    asset = models.ForeignKey('Asset')
+    asset = models.ForeignKey('Assert', on_delete=models.CASCADE)
     sn = models.CharField(u'SN号', max_length=128, blank=True, null=True)
     slot = models.CharField(u'插口', max_length=64)
     model = models.CharField(u'型号', max_length=64, blank=True, null=True)
@@ -263,8 +270,11 @@ class BusinessUnit(models.Model):
     pass
 
 
-class UserProfile(models.Model):
-    pass
+class UserProfile(User):
+    name = models.CharField(verbose_name='用户名', max_length=32)
+
+    def __str__(self):
+        return self.name
 
 
 class IDC(models.Model):
@@ -283,7 +293,7 @@ class Tag(models.Model):
     """资产标签"""
 
     name = models.CharField('Tag name', max_length=32, unique=True)
-    creator = models.ForeignKey('UserProfile')
+    creator = models.ForeignKey('UserProfile', on_delete=models.CASCADE)
     create_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
@@ -292,7 +302,6 @@ class Tag(models.Model):
 
 class EventLog(models.Model):
     """事件"""
-
     name = models.CharField(u'事件名称', max_length=100)
     event_type_choices = (
         (1, u'硬件变更'),
@@ -304,11 +313,11 @@ class EventLog(models.Model):
         (7, u'其它'),
     )
     event_type = models.SmallIntegerField(u'事件类型', choices=event_type_choices)
-    asset = models.ForeignKey('Asset')
+    asset = models.ForeignKey('Assert', on_delete=models.CASCADE)
     component = models.CharField('事件子项', max_length=255, blank=True, null=True)
     detail = models.TextField(u'事件详情')
     date = models.DateTimeField(u'事件时间', auto_now_add=True)
-    user = models.ForeignKey('UserProfile', verbose_name=u'事件源')
+    user = models.ForeignKey('UserProfile', verbose_name=u'事件源', on_delete=models.CASCADE)
     memo = models.TextField(u'备注', blank=True, null=True)
 
     def __str__(self):
